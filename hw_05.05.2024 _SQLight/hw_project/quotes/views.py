@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from .models import Author, Quote, Tag
 
 
+
 def main(request, page=1):
     # page_number = request.GET.get('page', 1)
     quotes = Quote.objects.all().order_by('-created_at')  # Отримання всіх цитат із бази даних SQLite
@@ -14,22 +15,54 @@ def main(request, page=1):
 
 def author_create(request):
     if request.method == 'POST':
+        # Обробка POST-запиту
         fullname = request.POST.get('fullname', '')
         born_date = request.POST.get('born_date', '')
         born_location = request.POST.get('born_location', '')
         description = request.POST.get('description', '')
         quote_text = request.POST.get('quote', '')
 
-        # Створення автора
-        author = Author(fullname=fullname, born_date=born_date, born_location=born_location, description=description)
-        author.save()
+        author = Author.objects.filter(fullname=fullname).first()
 
-        # Створення цитати та збереження її з автором
-        quote = Quote(quote=quote_text, author=author)
-        quote.save()
+        if not author:
+            author = Author.objects.create(
+                fullname=fullname,
+                born_date=born_date,
+                born_location=born_location,
+                description=description
+            )
 
-        return redirect('quotes:root')  # Перенаправлення на сторінку зі списком авторів
-    return render(request, 'author/author_create.html')
+        Quote.objects.create(
+            quote=quote_text,
+            author=author
+        )
+
+        # Після успішного створення автора та цитати перенаправити куди-небудь
+        return redirect('quotes:root')
+
+    else:
+        # Обробка GET-запиту (відображення форми для створення автора та цитати)
+        return render(request, 'author/author_create.html')
+
+
+
+
+def author_confirm_delete(request):
+    if request.method == 'POST':
+        full_name = request.POST.get('fullname', '')
+        try:
+            author = get_object_or_404(Author, fullname=full_name)
+        except Author.DoesNotExist:
+            return render(request, 'author_confirm_delete.html',
+                          {'error': f"No Author matches the fullname '{full_name}'"})
+
+        quotes = Quote.objects.filter(author=author)
+        quotes.delete()
+        author.delete()
+
+        return redirect('quotes:root')
+
+    return render(request, 'author_confirm_delete.html')
 
 
 def author_page(request, author_id):

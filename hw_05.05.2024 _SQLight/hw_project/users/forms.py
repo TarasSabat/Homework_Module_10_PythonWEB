@@ -44,12 +44,29 @@ class AuthorForm(forms.ModelForm):
             'description': 'Description',
         }
 
+# class QuoteForm(forms.ModelForm):
+#     class Meta:
+#         model = Quote
+#         fields = ('quote', 'tags', 'author')
+#         labels = {
+#             'quote': 'Quote',
+#             'tags': 'Tags',
+#             'author': 'Author',
+#         }
+
 class QuoteForm(forms.ModelForm):
+    author_fullname = forms.CharField(max_length=50, required=False)
+
     class Meta:
         model = Quote
-        fields = ('quote', 'tags', 'author')
-        labels = {
-            'quote': 'Quote',
-            'tags': 'Tags',
-            'author': 'Author',
-        }
+        fields = ['quote', 'tags', 'author_fullname']
+
+    def save(self, commit=True):
+        author_fullname = self.cleaned_data['author_fullname']
+        quote = super().save(commit=False)
+        if author_fullname:
+            author, created = Author.objects.get_or_create(fullname=author_fullname)
+            quote.author = author
+        if commit:
+            quote.save()
+        return quote
